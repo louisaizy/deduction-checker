@@ -2,7 +2,8 @@ var globalTP = 0;
 var tokens = []
 var schema_error = false;
 
- function getCharacters(line){
+
+function getCharacters(line){
    var characters=[];
    for (var i = 0; i < line.length; i++) {
      currChar = line.charAt(i);
@@ -11,13 +12,14 @@ var schema_error = false;
    return characters;
  }
 
+
 function getTokens(characters){
    var tokenPointer = 0;
    while (tokenPointer < characters.length){
      if (characters[tokenPointer] == " ") {
         tokenPointer+=1;
      }
-     else if (characters[tokenPointer] == "~") {
+     else if (characters[tokenPointer] == "-") {
        tokens.push("neg");
        tokenPointer+=1;
      }
@@ -29,7 +31,7 @@ function getTokens(characters){
        tokens.push("or");
        tokenPointer+=1;
      }
-     else if (characters[tokenPointer] == "(") {
+     else if (characters[tokenPointer] == "(" || characters[tokenPointer] == "[") {
        if (tokenPointer+4<characters.length && characters[tokenPointer+1]=="U" && characters[tokenPointer+2]=="Q" && characters[tokenPointer+3] != characters[tokenPointer+3].toUpperCase() && characters[tokenPointer+4] == ")"){
          tokens.push("uq");
          tokenPointer += 5;
@@ -43,7 +45,7 @@ function getTokens(characters){
          tokenPointer+=1
        }
      }
-     else if (characters[tokenPointer] == ")") {
+     else if (characters[tokenPointer] == ")" || characters[tokenPointer] == "]") {
        tokens.push("rp");
        tokenPointer+=1;
      }
@@ -97,6 +99,7 @@ function getTokens(characters){
    }
 }
 
+
 function conditional(){
   disjunction();
   if (globalTP < tokens.length && (tokens[globalTP] == "bicond" || tokens[globalTP] == "cond")){
@@ -104,6 +107,7 @@ function conditional(){
     disjunction();
   }
 }
+
 
 function disjunction(){
   conjunction();
@@ -113,6 +117,7 @@ function disjunction(){
   }
 }
 
+
  function conjunction(){
    equality();
    while (globalTP < tokens.length && tokens[globalTP] == "and"){
@@ -120,6 +125,7 @@ function disjunction(){
      equality();
    }
  }
+
 
 function equality(){
   negation();
@@ -129,6 +135,7 @@ function equality(){
   }
 }
 
+
 function negation(){
   while (globalTP < tokens.length && tokens[globalTP] == "neg"){
     globalTP+=1;
@@ -136,12 +143,14 @@ function negation(){
   quant();
 }
 
+
 function quant(){
   while (globalTP < tokens.length && (tokens[globalTP] == "uq" || tokens[globalTP] == "eq")){
     globalTP+=1;
   }
   term();
 }
+
 
 function term(){
   if (globalTP < tokens.length && tokens[globalTP] == "pred"){
@@ -160,10 +169,15 @@ function term(){
       schema_error = true;
     }
   }
+  else if (globalTP < tokens.length && tokens[globalTP] == "neg"){
+    globalTP+=1;
+    term();
+  }
   else {
     schema_error = true;
   }
 }
+
 
 function isSchema(lineNumber){
   var line = document.getElementById('line'+lineNumber).value;
@@ -186,6 +200,96 @@ function isSchema(lineNumber){
  }
 }
 
+
+function rule(lineNumber){
+  var rule = document.getElementById('rules'+lineNumber).value;
+  return rule;
+}
+
+
+function p(lineNumber){
+  var premises = document.getElementById('prem'+lineNumber).value;
+  var citation = document.getElementById('cite'+lineNumber).value;
+  if (premises.trim() != lineNumber.toString() || citation.trim() != ""){
+    return false;
+  }
+  else {
+    return true;
+  }
+}
+
+
+function cq(lineNumber){
+  var citation = document.getElementById('cite'+lineNumber).value.trim();
+  if (parseInt(citation).toString() != citation || citation >= lineNumber) {
+    return false;
+  }
+  var citedPrem = document.getElementById('prem'+citation).value.trim();
+  var currentPrem = document.getElementById('prem'+lineNumber).value.trim();
+  if (citedPrem != currentPrem){
+    return false;
+  }
+  var citedLine = document.getElementById('line'+citation).value.trim();
+  var currentLine = document.getElementById('line'+lineNumber).value.trim();
+  var citedLineChars = getCharacters(citedLine);
+  var currentLineChars = getCharacters(currentLine);
+  tokens = [];
+  getTokens(citedLineChars);
+  var citedLineTokens = tokens;
+  tokens = [];
+  getTokens(currentLineChars);
+  var currentLineTokens = tokens;
+  tokens = [];
+  if (citedLineTokens.length < 2 || currentLineTokens.length < 2 || citedLineTokens.length!=currentLineTokens.length){
+    return false;
+  }
+  var i = 0;
+  while(i<citedLineTokens.length-1){
+    if (citedLineTokens[i]!=currentLineTokens[i]){
+      if (citedLineTokens[i] == "neg" && citedLineTokens[i+1] == "uq"){
+        if (currentLineTokens[i] != "eq" || currentLineTokens[i+1] != "neg"){
+          return false;
+        }
+        else {
+          i+=2;
+        }
+      }
+      else if (citedLineTokens[i] == "neg" && citedLineTokens[i+1] == "eq"){
+        if (currentLineTokens[i] != "uq" || currentLineTokens[i+1] != "neg"){
+          return false;
+        }
+        else {
+          i+=2;
+        }
+      }
+      else if (citedLineTokens[i] == "uq" && citedLineTokens[i+1] == "neg"){
+        if (currentLineTokens[i] != "neg" || currentLineTokens[i+1] != "eq"){
+          return false;
+        }
+        else {
+          i+=2;
+        }
+      }
+      else if (citedLineTokens[i] == "eq" && citedLineTokens[i+1] == "neg"){
+        if (currentLineTokens[i] != "neg" || currentLineTokens[i+1] != "uq"){
+          return false;
+        }
+        else {
+          i+=2;
+        }
+      }
+      else {
+        return false;
+      }
+    }
+    else{
+      i++;
+    }
+  }
+  return true;
+}
+
+
 function check() {
   noIssues = true;
   for(i=1; i<16; i++){
@@ -193,6 +297,20 @@ function check() {
       window.alert("Something is wrong.");
       noIssues = false;
       break;
+    }
+    if (rule(i)=="P"){
+      noIssues = p(i);
+      if (noIssues ==false){
+        window.alert("Something is wrong.");
+        break;
+      }
+    }
+    if (rule(i)=="CQ"){
+      noIssues = cq(i);
+      if (noIssues == false){
+        window.alert("Something is wrong.");
+        break;
+      }
     }
   }
   if (noIssues){
