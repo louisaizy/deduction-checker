@@ -290,6 +290,112 @@ function cq(lineNumber){
 }
 
 
+function isInteger(myString){
+  if (parseInt(myString).toString() == myString){
+    return true;
+  }
+  else {
+    return false;
+  }
+}
+
+
+function getPremises(lineNumber){
+  var premisesEntry = document.getElementById('prem'+lineNumber).value.trim();
+  if (premisesEntry.length == 0){
+    return [];
+  }
+  var premises = premisesEntry.split(',').map(item => item.trim());
+  filteredPremises = premises.filter(item => item != " ")
+  return filteredPremises;
+}
+
+
+function discharge(lineNumber){
+  var citation = document.getElementById('cite'+lineNumber).value.trim();
+  var premises = document.getElementById('prem'+lineNumber).value.trim();
+  var currentLine = document.getElementById('line'+lineNumber).value.trim();
+  //check citation
+  var citedAntecedentString = "";
+  var citedConsequentString = "";
+  if (citation.length == 0 || citation.charAt(0)!="["){
+    return false;
+  }
+  var i = 1;
+  while (i<citation.length && citation.charAt(i)!="]"){
+     if (isInteger(citation.charAt(i))==false) {
+       return false;
+     }
+     else {
+       citedAntecedentString += citation.charAt(i);
+       i++;
+     }
+  }
+  if (i>=citation.length){
+     return false;
+  }
+  else if (citedAntecedentString == "") {
+    return false;
+  }
+  else {
+    i += 1;
+  }
+  while (i<citation.length && citation.charAt(i)!="("){
+    if (citation.charAt(i) == " "){
+      i += 1;
+    }
+    else {
+       return false;
+    }
+  }
+  if (i>=citation.length){
+    return false;
+  }
+  else {
+    i += 1;
+  }
+
+  while (i<citation.length && citation.charAt(i)!=")"){
+    if (isInteger(citation.charAt(i))== false) {
+      return false;
+    }
+    else {
+      citedConsequentString += citation.charAt(i);
+      i++;
+    }
+  }
+  i++;
+  if (i<citation.length || citedConsequentString == ""){
+    return false;
+  }
+  //now know citation format is good. just need to check if numbers are appropriate.
+  var citedConsequentLineNum = parseInt(citedConsequentString);
+  var citedAntecedentLineNum = parseInt(citedAntecedentString);
+  if (citedConsequentLineNum >= lineNumber || citedAntecedentLineNum >= lineNumber
+    || citedConsequentLineNum < 1 || citedAntecedentLineNum <1){
+    return false;
+  }
+  //check premises. need to be same as original prem minus cited one.
+  var premises = getPremises(lineNumber);
+  var citedConsequentPremises = getPremises(citedConsequentLineNum.toString());
+  var combinedPrem = premises.concat([citedAntecedentLineNum.toString()]);
+  //compare premises to combined prem.
+  citedConsequentPremises = citedConsequentPremises.sort();
+  combinedPrem = combinedPrem.sort();
+  if (citedConsequentPremises.length != combinedPrem.length){
+    return false;
+  }
+  for (var k = 0; k<citedConsequentPremises.length; k++){
+    if (citedConsequentPremises[k] != combinedPrem[k]){
+      return false;
+    }
+  }
+  //check lines- merger of 2 cited
+  
+  return true;
+}
+
+
 function check() {
   noIssues = true;
   for(i=1; i<16; i++){
@@ -305,8 +411,15 @@ function check() {
         break;
       }
     }
-    if (rule(i)=="CQ"){
+    else if (rule(i)=="CQ"){
       noIssues = cq(i);
+      if (noIssues == false){
+        window.alert("Something is wrong.");
+        break;
+      }
+    }
+    else if (rule(i)=="D"){
+      noIssues = discharge(i);
       if (noIssues == false){
         window.alert("Something is wrong.");
         break;
