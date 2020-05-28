@@ -7,7 +7,9 @@ function getCharacters(line){
    var characters=[];
    for (var i = 0; i < line.length; i++) {
      currChar = line.charAt(i);
-     characters.push(currChar);
+     if (currChar != ' '){
+       characters.push(currChar);
+     }
    }
    return characters;
  }
@@ -311,6 +313,27 @@ function getPremises(lineNumber){
 }
 
 
+function createConditional(antecedentLine, consequentLine){
+  antecedentChars = getCharacters(antecedentLine);
+  consequentChars = getCharacters(consequentLine);
+  tokens = [];
+  getTokens(antecedentChars);
+  antecedentTokens = tokens;
+  tokens = [];
+  getTokens(consequentChars);
+  consequentTokens = tokens;
+  tokens = [];
+  if (antecedentTokens.includes("cond") || antecedentTokens.includes("bicond")){
+    antecedentLine = "(" + antecedentLine + ")";
+  }
+  if (consequentTokens.includes("cond") || consequentTokens.includes("bicond")){
+    antecedentLine = "(" + antecedentLine + ")";
+  }
+  var conditional = antecedentLine + " => " + consequentLine;
+  return conditional;
+}
+
+
 function discharge(lineNumber){
   var citation = document.getElementById('cite'+lineNumber).value.trim();
   var premises = document.getElementById('prem'+lineNumber).value.trim();
@@ -391,7 +414,37 @@ function discharge(lineNumber){
     }
   }
   //check lines- merger of 2 cited
-  
+  var antecedentLine = document.getElementById('line'+citedAntecedentLineNum).value.trim();
+  var consequentLine = document.getElementById('line'+citedConsequentLineNum).value.trim();
+  var dischargeLine = document.getElementById('line'+lineNumber).value.trim();
+  var mergerLine = createConditional(antecedentLine, consequentLine);
+  var mergerCharacters = getCharacters(mergerLine);
+  var dischargeCharacters = getCharacters(dischargeLine);
+  if (mergerCharacters.length != dischargeCharacters.length){
+    return false;
+  }
+  for (i=0;i<mergerCharacters.length;i++){
+    if (mergerCharacters[i]!=dischargeCharacters[i]){
+      return false;
+    }
+  }
+  return true;
+}
+
+
+function ruleOne(lineNumber){
+  var currentLine = document.getElementById('line'+lineNumber).value.trim();
+  if (currentLine != "(UQx)(x=x)"){
+    return false;
+  }
+  var citation = document.getElementById('cite'+lineNumber).value.trim();
+  if (citation != ""){
+    return false;
+  }
+  var premises = document.getElementById('prem'+lineNumber).value.trim();
+  if (premises != ""){
+    return false;
+  }
   return true;
 }
 
@@ -420,6 +473,13 @@ function check() {
     }
     else if (rule(i)=="D"){
       noIssues = discharge(i);
+      if (noIssues == false){
+        window.alert("Something is wrong.");
+        break;
+      }
+    }
+    else if (rule(i)=="I"){
+      noIssues = ruleOne(i);
       if (noIssues == false){
         window.alert("Something is wrong.");
         break;
