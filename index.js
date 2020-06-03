@@ -610,10 +610,12 @@ Parameters: assignment- mixed array of booleans and strings (tokens)
 Returns: boolean
 */
 function evaluateParen(assignment){
-  if (assignment[globalMarker] == "lp"){
+  if (globalMarker < assignment.length && assignment[globalMarker] == "lp"){
     globalMarker += 1;
     tf = evaluateTF(assignment);
-    globalMarker += 1;
+    if (assignment[globalMarker] == "rp"){
+      globalMarker += 1;
+    }
   }
   else {
     tf = assignment[globalMarker];
@@ -631,17 +633,13 @@ Parameters: assignment- mixed array of booleans and strings (tokens)
 Returns: boolean
 */
 function evaluateNeg(assignment){
-  numNegations = 0;
+  var myString = "";
   while (globalMarker < assignment.length && assignment[globalMarker] == "neg"){
-    numNegations += 1;
     globalMarker += 1;
+    myString += "!"
   }
-  if (numNegations % 2 == 0){
-    return evaluateParen(assignment);
-  }
-  else {
-    return !evaluateParen(assignment);
-  }
+  myString += evaluateParen(assignment);
+  return eval(myString);
 }
 
 
@@ -653,21 +651,15 @@ Parameters: assignment- mixed array of booleans and strings (tokens)
 Returns: boolean
 */
 function evaluateAnd(assignment){
-  var boolArray = [];
-  var eval = evaluateNeg(assignment);
-  boolArray.push(eval);
+  var myString = "";
+  myString += evaluateNeg(assignment); //string
   while (globalMarker < assignment.length && assignment[globalMarker] == "and"){
     globalMarker += 1;
-    boolArray.push(evaluateNeg(assignment));
+    myString += "&&"
+    myString += evaluateNeg(assignment);
   }
-  if (boolArray.includes(false)){
-    return false;
-  }
-  else {
-    return true;
-  }
+  return eval(myString);
 }
-
 
 /*
 evaluateOr function
@@ -677,48 +669,242 @@ Parameters: assignment- mixed array of booleans and strings (tokens)
 Returns: boolean
 */
 function evaluateOr(assignment){
-  var boolArray = [];
-  boolArray.push(evaluateAnd(assignment));
+  var myString = "";
+  myString += evaluateAnd(assignment); //string
   while (globalMarker < assignment.length && assignment[globalMarker] == "or"){
     globalMarker += 1;
-    boolArray.push(evaluateAnd(assignment));
+    myString += "||"
+    myString += evaluateAnd(assignment);
   }
-  if (boolArray.includes(true)){
-    return true;
+  return eval(myString);
+}
+
+
+function evaluateTF(assignment){
+  var partOne = evaluateOr(assignment);
+  if (globalMarker < assignment.length && (assignment[globalMarker] == "cond" || assignment[globalMarker]=="bicond")){
+    condType = assignment[globalMarker];
+    globalMarker += 1;
+    var partTwo = evaluateOr(assignment);
+    if (condType == "bicond"){
+      return eval(partOne == partTwo);
+    }
+    else {
+      return eval(!partOne || partTwo);
+    }
   }
   else {
-    return false;
+    return eval(partOne);
   }
 }
 
 
-/*
-evaluateTF function
-Description: evaluates true/false of an assignment which may or may not contain
-             conditionals, biconditionals, disjunctions, conjunctions, negations
-             and/or expressions in parentheses
-Parameters: assignment- mixed array of booleans and strings (tokens)
-Returns: boolean
-*/
-function evaluateTF(assignment){
-  partOne = evaluateOr(assignment);
-  if (globalMarker < assignment.length){
-    condType = assignment[globalMarker];
-    globalMarker += 1;
-    partTwo = evaluateOr(assignment);
-    if (condType == "bicond"){
-      return partOne === partTwo;
+function tf(lineNumber){
+  globalMarker = 0;
+  //ensure that citation is appropriate
+  var citation = document.getElementById('cite'+lineNumber).value.trim();
+  var citedLines = [];
+  var i = 0;
+  while(i<citation.length){
+    if (citation[i]==" "){
+      i++;
+      continue;
     }
-    else if (partOne && !partTwo){
-      return false;
+    else if (citation[i]=="("){
+      i++;
+      var currInt = "";
+      while(i<citation.length && isInteger(citation[i])==true){
+        currInt += citation[i];
+        i++;
+      }
+      if (citation[i]>= citation.length || citation[i]!=")" || currInt == ""){
+        return false;
+      }
+      else {
+        i++;
+        if (parseInt(currInt) < 1 || parseInt(currInt) >= lineNumber){
+          return false;
+        }
+        citedLines.push(parseInt(currInt));
+      }
     }
     else {
-      return true;
+      return false;
     }
   }
-  else {
-    return partOne;
+  //ensure that premises match citation
+  var requiredPrem = [];
+  for(var j=0; j<citedLines.length; j++){
+    var somePremises = getPremises(citedLines[j]);
+    for(var k=0; k<somePremises.length; k++){
+      if (!requiredPrem.includes(somePremises[k])){
+        requiredPrem.push(somePremises[k]);
+      }
+    }
   }
+  requiredPrem = requiredPrem.sort();
+  actualPrem = getPremises(lineNumber).sort();
+  if (requiredPrem.length!=actualPrem.length){
+    return false;
+  }
+  for(var l=0; l<requiredPrem.length; l++){
+    if (requiredPrem[l]!=actualPrem[l]){
+      return false;
+    }
+  }
+  //put cited lines together with conjunctions
+  var implication = "";
+  for(var m=0; m<citedLines.length; m++){
+    implication += "(";
+    implication += document.getElementById('line'+citedLines[m]).value.trim();
+    implication += ")";
+    if (m != citedLines.length - 1){
+      implication += "*";
+    }
+  }
+  //build conditional with cited line conjunction => current line
+  implication += "=>(";
+  implication += document.getElementById('line'+lineNumber).value.trim();
+  implication += ")";
+  //know you have a schema now
+  //from this schema, build a template for assignments.
+        //if you have lp, rp, cond, bicond, neg, and, or:
+              //put the token
+        //otherwise, put what is there together in a string- could be pred, sentLet, equality
+  var assignmentTemplate = [];
+  var implicationChars = getCharacters(implication);
+  var newString = "";
+  var n = 0;
+  while (n<implicationChars.length){
+    if (implicationChars[n] == "-"){
+      // if (newString != ""){
+      //   assignmentTemplate.push(newString);
+      // }
+      assignmentTemplate.push("neg");
+      newString = "";
+      n++;
+    }
+    else if (implicationChars[n] == "*"){
+      if (newString != ""){
+        assignmentTemplate.push(newString);
+      }
+      assignmentTemplate.push("and");
+      newString = "";
+      n++;
+    }
+    else if (implicationChars[n] == "V"){
+      if (newString != ""){
+        assignmentTemplate.push(newString);
+      }
+      assignmentTemplate.push("or");
+      newString = "";
+      n++;
+    }
+    else if (implicationChars[n] == "(" && implicationChars[n+1]!="U" && implicationChars[n+1] != "E"){
+      if (newString != ""){
+        assignmentTemplate.push(newString);
+      }
+      assignmentTemplate.push("lp");
+      newString = "";
+      n++;
+    }
+    else if (implicationChars[n] == ")" && implicationChars[n-2]!="Q"){
+      if (newString != ""){
+        assignmentTemplate.push(newString);
+      }
+      assignmentTemplate.push("rp");
+      newString = "";
+      n++;
+    }
+    else if (implicationChars[n] == "=" && implicationChars[n+1]==">"){
+      if (newString != ""){
+        assignmentTemplate.push(newString);
+      }
+      assignmentTemplate.push("cond");
+      newString = "";
+      n+=2;
+    }
+    else if (implicationChars[n] == "<"){
+      if (newString != ""){
+        assignmentTemplate.push(newString);
+      }
+      assignmentTemplate.push("bicond");
+      newString = "";
+      n+=3;
+    }
+    else if (implicationChars[n]==" "){
+      n++;
+    }
+    else {
+      newString += implicationChars[n];
+      n++;
+    }
+  }
+  if (newString != ""){
+    assignmentTemplate.push(newString);
+  }
+  //make an array of all the strings that need assignments (no repeats!)
+  var tfSlots = [];
+  for (var x=0; x<assignmentTemplate.length; x++){
+    if(assignmentTemplate[x]!="neg" && assignmentTemplate[x]!="and" && assignmentTemplate[x]!="or" && assignmentTemplate[x]!="lp" && assignmentTemplate[x]!="rp" && assignmentTemplate[x]!="cond" && assignmentTemplate[x]!="bicond"){
+      if (!tfSlots.includes(assignmentTemplate[x])){
+        tfSlots.push(assignmentTemplate[x]);
+      }
+    }
+  }
+  //go through all possible assignments and create them- so if you have the same string multiple times replace with same boolean
+  var assignments = []; //array of arrays
+  var assignment1 = []; //arrays of strings and booleans
+  var assignment2 = [];
+  for (var y=0; y<assignmentTemplate.length; y++){
+    if (assignmentTemplate[y] == tfSlots[0]){
+      assignment1.push(true);
+    }
+    else {
+      assignment1.push(assignmentTemplate[y]);
+    }
+  }
+  assignments.push(assignment1);
+  for (var z=0; z<assignmentTemplate.length; z++){
+    if (assignmentTemplate[z] == tfSlots[0]){
+      assignment2.push(false);
+    }
+    else {
+      assignment2.push(assignmentTemplate[z]);
+    }
+  }
+  assignments.push(assignment2);
+  for(var a=1; a<tfSlots.length; a++){
+    var originalLength = assignments.length
+    for(var b=0; b<originalLength; b++){
+       var duplicate = [...assignments[b]];
+       for(var c=0; c<assignments[b].length; c++){
+         if (assignments[b][c]==tfSlots[a]){
+           assignments[b][c]=true;
+         }
+       }
+      for(var d=0; d<duplicate.length; d++){
+        if (duplicate[d]==tfSlots[a]){
+          duplicate[d]=false;
+        }
+      }
+      assignments.push(duplicate);
+    }
+  }
+  //each assignment is now an array. for each of these assignments, use evaluateTF function.
+  for(var e=0; e<assignments.length; e++){
+    globalMarker = 0;
+    var newAssign = ""
+    for(var f=0; f<assignments[e].length; f++){
+      newAssign+=assignments[e][f]+ " ";
+    }
+    result = evaluateTF(assignments[e]);
+    if (result == false){
+      return false;
+    }
+  }
+  //if evaluateTF function returns false any time, there is an error with the tf line. else, looks good.
+  return true;
 }
 
 
@@ -731,10 +917,9 @@ Description: called when check button is pressed. Loops through each row and
 Parameters: none
 Returns: none
 Potential issues: does not say how the error came about. Talk to Prof. Sehon to
-see if he would like this feature.
+see if he would like this feature. parentheses issues.
 */
 function check() {
-  globalMarker = 0;
   noIssues = true;
   for(i=1; i<16; i++){
     if (isSchema(i)==false){
@@ -770,6 +955,13 @@ function check() {
         break;
       }
     }
+    else if (rule(i)=="TF"){
+      noIssues = tf(i);
+      if (noIssues == false){
+        window.alert("Something is wrong.");
+        break;
+      }
+    }
   }
   if (noIssues){
       window.alert("Looks good!");
@@ -777,4 +969,5 @@ function check() {
   tokens = [];
   schema_error = false;
   globalTP = 0;
+  globalMarker = 0;
 }
