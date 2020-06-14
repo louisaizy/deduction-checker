@@ -3,10 +3,13 @@ index.js by Louisa Izydorczak
 Javascript file for deduction checker program
 */
 
+
 var globalTP = 0; //global token pointer
-var tokens = []
+var tokens = [];
 var schema_error = false;
 var globalMarker = 0;
+var citedLines = [];
+
 
 /*
 getCharacters function
@@ -15,7 +18,7 @@ Parameters: string
 Returns: array of all characters in string without any spaces
 */
 function getCharacters(line){
-   var characters=[];
+   var characters = [];
    for (var i = 0; i < line.length; i++) {
      currChar = line.charAt(i);
      if (currChar != ' '){
@@ -329,7 +332,7 @@ Parameters: integer 1-15 (line number)
 Returns: boolean (if line is valid conversion of quantifiers line or not)
 Potential issues: Might work if there is no conversion of quantifiers. May not handle
                   change in parentheses. Could this function be shortened/ broken
-                  into multiple functions?
+                  into multiple functions? Need citation to be in parentheses
 */
 function cq(lineNumber){
   var citation = document.getElementById('cite'+lineNumber).value.trim();
@@ -345,13 +348,13 @@ function cq(lineNumber){
   var currentLine = document.getElementById('line'+lineNumber).value.trim();
   var citedLineChars = getCharacters(citedLine);
   var currentLineChars = getCharacters(currentLine);
-  tokens = [];
+  tokens.length = 0;
   getTokens(citedLineChars);
   var citedLineTokens = tokens;
-  tokens = [];
+  tokens.length = 0;
   getTokens(currentLineChars);
   var currentLineTokens = tokens;
-  tokens = [];
+  tokens.length = 0;
   if (citedLineTokens.length < 2 || currentLineTokens.length < 2
        || citedLineTokens.length!=currentLineTokens.length){
     return false;
@@ -449,13 +452,13 @@ Returns: one string (conditional)
 function createConditional(antecedentLine, consequentLine){
   antecedentChars = getCharacters(antecedentLine);
   consequentChars = getCharacters(consequentLine);
-  tokens = [];
+  tokens.length = 0;
   getTokens(antecedentChars);
   antecedentTokens = tokens;
-  tokens = [];
+  tokens.length = 0;
   getTokens(consequentChars);
   consequentTokens = tokens;
-  tokens = [];
+  tokens.length = 0;
   if (antecedentTokens.includes("cond") || antecedentTokens.includes("bicond")){
     antecedentLine = "(" + antecedentLine + ")";
   }
@@ -610,6 +613,7 @@ Parameters: assignment- mixed array of booleans and strings (tokens)
 Returns: boolean
 */
 function evaluateParen(assignment){
+  var tf;
   if (globalMarker < assignment.length && assignment[globalMarker] == "lp"){
     globalMarker += 1;
     tf = evaluateTF(assignment);
@@ -661,6 +665,7 @@ function evaluateAnd(assignment){
   return eval(myString);
 }
 
+
 /*
 evaluateOr function
 Description: evaluates true/false of an assignment which may or may not contain
@@ -680,6 +685,14 @@ function evaluateOr(assignment){
 }
 
 
+/*
+evaluateTF function
+Description: evaluates true/false of an assignment which may or may not contain
+             conditionals, biconditionals, disjunctions, conjunctions, negations
+             and/or expressions in parentheses
+Parameters: assignment- mixed array of booleans and strings (tokens)
+Returns: final boolean, whether or not assignment evaluates to true or false
+*/
 function evaluateTF(assignment){
   var partOne = evaluateOr(assignment);
   if (globalMarker < assignment.length && (assignment[globalMarker] == "cond" || assignment[globalMarker]=="bicond")){
@@ -699,11 +712,21 @@ function evaluateTF(assignment){
 }
 
 
+/*
+tf function
+Description: checks whether or not a given line is a valid tf line. This involves
+             ensuring that the citation is appropriate, that the premises are a
+             combination of the cited lines' premises, and that the cited lines
+             truth-functionally imply the current line.
+Parameters: line number (integer 1-15)
+Returns: boolean, whether or not line is a valid tf line
+Issues: doesn't correctly handle quantified statements
+*/
 function tf(lineNumber){
-  globalMarker = 0;
+  //globalMarker = 0;
   //ensure that citation is appropriate
   var citation = document.getElementById('cite'+lineNumber).value.trim();
-  var citedLines = [];
+  citedLines.length = 0;
   var i = 0;
   while(i<citation.length){
     if (citation[i]==" "){
@@ -777,9 +800,9 @@ function tf(lineNumber){
   var n = 0;
   while (n<implicationChars.length){
     if (implicationChars[n] == "-"){
-      // if (newString != ""){
-      //   assignmentTemplate.push(newString);
-      // }
+      if (newString != ""){
+        assignmentTemplate.push(newString);
+      }
       assignmentTemplate.push("neg");
       newString = "";
       n++;
@@ -854,6 +877,7 @@ function tf(lineNumber){
   }
   //go through all possible assignments and create them- so if you have the same string multiple times replace with same boolean
   var assignments = []; //array of arrays
+  assignments.length = 0;
   var assignment1 = []; //arrays of strings and booleans
   var assignment2 = [];
   for (var y=0; y<assignmentTemplate.length; y++){
@@ -892,18 +916,136 @@ function tf(lineNumber){
     }
   }
   //each assignment is now an array. for each of these assignments, use evaluateTF function.
+  var result = true;
+  //var newAssign = "";
   for(var e=0; e<assignments.length; e++){
     globalMarker = 0;
-    var newAssign = ""
-    for(var f=0; f<assignments[e].length; f++){
-      newAssign+=assignments[e][f]+ " ";
-    }
+    // newAssign = "";
+    // for(var f=0; f<assignments[e].length; f++){
+    //   newAssign+=assignments[e][f]+ " ";
+    // }
     result = evaluateTF(assignments[e]);
     if (result == false){
       return false;
     }
   }
-  //if evaluateTF function returns false any time, there is an error with the tf line. else, looks good.
+  //globalMarker = 0;
+  assignments.length = 0;
+  assignment1.length = 0;
+  assignment2.length = 0;
+  tfSlots.length = 0;
+   //if evaluateTF function returns false any time, there is an error with the tf line. else, looks good.
+   return true;
+}
+
+
+function isUI(citedLineNumber, lineNumber){
+  var citedLine = document.getElementById('line'+citedLineNumber).value.trim();
+  var currentLine = document.getElementById('line'+lineNumber).value.trim();
+  var citedLineChars = getCharacters(citedLine);
+  var currentLineChars = getCharacters(currentLine);
+  if (citedLineChars.length < 6){
+    window.alert(citedLineChars.length.toString());
+    return false;
+  }
+  if (citedLineChars[0]!="(" || citedLineChars[1]!="U" || citedLineChars[2]!="Q" || citedLineChars[4]!=")"){
+    return false;
+  }
+  var varOfInst = citedLineChars[3];
+  var citedLineCharsSansUQ = [];
+  for (var i=5; i<citedLineChars.length; i++){
+    citedLineCharsSansUQ.push(citedLineChars[i]);
+  }
+  var currentLineCharsPlusParen = ["("];
+  for (var j=0; j<currentLineChars.length; j++){
+    currentLineCharsPlusParen.push(currentLineChars[j]);
+  }
+  currentLineCharsPlusParen.push(")");
+  var currLineCharsToCheck = [];
+  if (currentLineCharsPlusParen.length == citedLineCharsSansUQ.length){
+    currLineCharsToCheck = [...currentLineCharsPlusParen];
+  }
+  else if (currentLineChars.length == citedLineCharsSansUQ.length) {
+    currLineCharsToCheck = [...currentLineChars];
+  }
+  else{
+    return false;
+  }
+  //now, compare currLineCharsToCheck to citedLineCharsSansUQ. the only diff can be
+  //that the var of instantiation is replaced by some other variable (which remains consistent)
+  var replaceVar = "none";
+  for (var k=0; k<citedLineCharsSansUQ.length; k++){
+    if (citedLineCharsSansUQ[k]==varOfInst){
+      if (replaceVar == "none"){
+        if (currLineCharsToCheck[k] == currLineCharsToCheck[k].toUpperCase()){
+          return false;
+        }
+        replaceVar = currLineCharsToCheck[k];
+      }
+      else {
+        if (currLineCharsToCheck[k]!=replaceVar){
+          return false;
+        }
+      }
+    }
+    else {
+      if (citedLineCharsSansUQ[k] != currLineCharsToCheck[k]){
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+
+function ui(lineNumber){
+  //check citation
+  var citation = document.getElementById('cite'+lineNumber).value.trim();
+  citedLines.length = 0;
+  var i = 0;
+  while(i<citation.length){
+    if (citation[i]==" "){
+      i++;
+      continue;
+    }
+    else if (citation[i]=="("){
+      i++;
+      var currInt = "";
+      while(i<citation.length && isInteger(citation[i])==true){
+        currInt += citation[i];
+        i++;
+      }
+      if (citation[i]>= citation.length || citation[i]!=")" || currInt == ""){
+        return false;
+      }
+      else {
+        i++;
+        if (parseInt(currInt) < 1 || parseInt(currInt) >= lineNumber){
+          return false;
+        }
+        citedLines.push(parseInt(currInt));
+      }
+    }
+    else {
+      return false;
+    }
+  }
+  if (citedLines.length != 1){
+    return false;
+  }
+  else {
+    var citedLine = citedLines[0];
+  }
+  //check premises
+  var citedPrem = document.getElementById('prem'+citedLine).value.trim();
+  var currentPrem = document.getElementById('prem'+lineNumber).value.trim();
+  if (citedPrem != currentPrem){
+    return false;
+  }
+  //check line
+  if(!isUI(citedLine, lineNumber)){
+    return false;
+  }
   return true;
 }
 
@@ -962,12 +1104,19 @@ function check() {
         break;
       }
     }
+    else if (rule(i)=="UI"){
+      noIssues = ui(i);
+      if (noIssues == false){
+        window.alert("Something is wrong.");
+        break;
+      }
+    }
   }
   if (noIssues){
       window.alert("Looks good!");
   }
-  tokens = [];
+  tokens.length = 0;
   schema_error = false;
   globalTP = 0;
-  globalMarker = 0;
+  //globalMarker = 0;
 }
