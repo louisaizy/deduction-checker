@@ -945,7 +945,6 @@ function isUI(citedLineNumber, lineNumber){
   var citedLineChars = getCharacters(citedLine);
   var currentLineChars = getCharacters(currentLine);
   if (citedLineChars.length < 6){
-    window.alert(citedLineChars.length.toString());
     return false;
   }
   if (citedLineChars[0]!="(" || citedLineChars[1]!="U" || citedLineChars[2]!="Q" || citedLineChars[4]!=")"){
@@ -1050,6 +1049,207 @@ function ui(lineNumber){
 }
 
 
+function isEG(citedLineNumber, lineNumber){
+  var citedLine = document.getElementById('line'+citedLineNumber).value.trim();
+  var currentLine = document.getElementById('line'+lineNumber).value.trim();
+  var citedLineChars = getCharacters(citedLine);
+  var currentLineChars = getCharacters(currentLine);
+  if (currentLineChars.length < 6){
+    return false;
+  }
+  if (currentLineChars[0]!="(" || currentLineChars[1]!="E" || currentLineChars[2]!="Q" || currentLineChars[4]!=")"){
+    return false;
+  }
+  var varOfInst = currentLineChars[3];
+  var currentLineCharsSansEQ = [];
+  for (var i=5; i<currentLineChars.length; i++){
+    currentLineCharsSansEQ.push(currentLineChars[i]);
+  }
+  var citedLineCharsPlusParen = ["("];
+  for (var j=0; j<citedLineChars.length; j++){
+    citedLineCharsPlusParen.push(citedLineChars[j]);
+  }
+  citedLineCharsPlusParen.push(")");
+  var citedLineCharsToCheck = [];
+  if (citedLineCharsPlusParen.length == currentLineCharsSansEQ.length){
+    citedLineCharsToCheck = [...citedLineCharsPlusParen];
+  }
+  else if (citedLineChars.length == currentLineCharsSansEQ.length) {
+    citedLineCharsToCheck = [...citedLineChars];
+  }
+  else{
+    return false;
+  }
+  var replaceVar = "none";
+  for (var k=0; k<currentLineCharsSansEQ.length; k++){
+    if (currentLineCharsSansEQ[k]==varOfInst){
+      if (replaceVar == "none"){
+        if (citedLineCharsToCheck[k] == citedLineCharsToCheck[k].toUpperCase()){
+          return false;
+        }
+        replaceVar = citedLineCharsToCheck[k];
+      }
+      else {
+        if (citedLineCharsToCheck[k]!=replaceVar){
+          return false;
+        }
+      }
+    }
+    else {
+      if (currentLineCharsSansEQ[k] != citedLineCharsToCheck[k]){
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+
+function eg(lineNumber){
+  //check citation
+  var citation = document.getElementById('cite'+lineNumber).value.trim();
+  citedLines.length = 0;
+  var i = 0;
+  while(i<citation.length){
+    if (citation[i]==" "){
+      i++;
+      continue;
+    }
+    else if (citation[i]=="("){
+      i++;
+      var currInt = "";
+      while(i<citation.length && isInteger(citation[i])==true){
+        currInt += citation[i];
+        i++;
+      }
+      if (citation[i]>= citation.length || citation[i]!=")" || currInt == ""){
+        return false;
+      }
+      else {
+        i++;
+        if (parseInt(currInt) < 1 || parseInt(currInt) >= lineNumber){
+          return false;
+        }
+        citedLines.push(parseInt(currInt));
+      }
+    }
+    else {
+      return false;
+    }
+  }
+  if (citedLines.length != 1){
+    return false;
+  }
+  else {
+    var citedLine = citedLines[0];
+  }
+  //check premises
+  var citedPrem = document.getElementById('prem'+citedLine).value.trim();
+  var currentPrem = document.getElementById('prem'+lineNumber).value.trim();
+  if (citedPrem != currentPrem){
+    return false;
+  }
+  //check line
+  if(!isEG(citedLine, lineNumber)){
+    return false;
+  }
+  return true;
+}
+
+
+function isFree(varOfInst, lineNumber){
+  var line = document.getElementById('line'+lineNumber).value.trim();
+  var lineChars = getCharacters(line);
+  var isBound = false;
+  var parenCount = 0;
+  for (var i = 0; i < lineChars.length; i++){
+    if (lineChars[i] == varOfInst){
+      if (i-2 > 0 && (lineChars[i-2] == "E" || lineChars[i-2] == "U") && lineChars[i-1] == "Q"){
+        isBound = true;
+        continue;
+      }
+      else if (isBound == false){
+        return true;
+      }
+    }
+    else if (lineChars[i] == "(" && isBound == true){
+      if (i+2 >= lineChars.length || lineChars[i+2]!="Q"){
+        parenCount += 1;
+      }
+    }
+    else if (lineChars[i] == ")" && isBound == true){
+      if (i-2<0 || lineChars[i-2]!="Q"){
+        parenCount -= 1;
+        if (parenCount == 0) {
+          isBound = false;
+        }
+      }
+    }
+    else if (i+1 < lineChars.length && lineChars[i] == "=" && lineChars[i+1] == ">" && isBound == true){
+      if (parenCount == 0){
+        isBound = false;
+      }
+    }
+    else if (i+2 < lineChars.length && lineChars[i] == "<" && lineChars[i+1] == "=" && lineChars[i+2] == ">" && isBound == true){
+      if (parenCount == 0){
+        isBound = false;
+      }
+    }
+  }
+  return false;
+}
+
+
+function eii(lineNumber){
+  //check citation form (m)u
+  var citation = document.getElementById('cite'+lineNumber).value.trim();
+  var citationChars = getCharacters(citation);
+  if (citationChars.length < 4 || citationChars[0]!="("){
+    return false;
+  }
+  var i = 1;
+  var citedLineNumberString = "";
+  while (citationChars.length > i && isInteger(citationChars[i])){
+    citedLineNumberString += citationChars[i];
+    i++;
+  }
+  if (i==1){
+    return false;
+  }
+  var citedLineNumber = parseInt(citedLineNumberString);
+  if (i+2!=citationChars.length || citationChars[i]!=")" || citationChars[i+1].toUpperCase() == citationChars[i+1]){
+    return false;
+  }
+  if (citedLineNumber < 1 || citedLineNumber >= lineNumber){
+    return false;
+  }
+  var varOfInst = citationChars[i+1];
+  //check that instantial variable is not free in any line up to and including line m
+  for (var k = 1; k<=citedLineNumber; k++){
+    if (isFree(varOfInst, k)){
+      return false;
+    }
+  }
+  //check that premises are those of line (m) + current line number
+  var citedPrem = getPremises(citedLineNumber);
+  var currentPrem = getPremises(lineNumber);
+  var currentPremShouldBe = [...citedPrem];
+  currentPremShouldBe.push(lineNumber);
+  currentPrem = currentPrem.sort();
+  currentPremShouldBe = currentPremShouldBe.sort();
+  if (currentPrem.length != currentPremShouldBe.length){
+    return false;
+  }
+  for (var j = 0; j < currentPrem.length; j++){
+    if (currentPrem[j]!=currentPremShouldBe[j]){
+      return false;
+    }
+  }
+  //check that new line is instance of schema on line m (similar to UI check)
+  return true;
+}
+
+
 /*
 check function
 Description: called when check button is pressed. Loops through each row and
@@ -1106,6 +1306,20 @@ function check() {
     }
     else if (rule(i)=="UI"){
       noIssues = ui(i);
+      if (noIssues == false){
+        window.alert("Something is wrong.");
+        break;
+      }
+    }
+    else if (rule(i)=="EG"){
+      noIssues = eg(i);
+      if (noIssues == false){
+        window.alert("Something is wrong.");
+        break;
+      }
+    }
+    else if (rule(i)=="EII"){
+      noIssues = eii(i);
       if (noIssues == false){
         window.alert("Something is wrong.");
         break;
