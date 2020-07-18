@@ -255,6 +255,8 @@ function term(){
     term();
   }
   else {
+    window.alert("globalTP:" + globalTP.toString());
+    window.alert("tokens.length:" + tokens.length.toString());
     schema_error = true;
   }
 }
@@ -271,18 +273,22 @@ Returns: boolean (whether or not line is a schema)
 */
 function isSchema(lineNumber){
   var line = document.getElementById('line'+lineNumber).value;
-  characters = getCharacters(line);
+  var characters = getCharacters(line);
   if (characters.length == 0){
     return true;
   }
   getTokens(characters);
   for(var i=0; i<tokens.length; i++){
     if (tokens[i]=="error"){
+      window.alert("hehe");
       return false;
     }
   }
  conditional();
  if (globalTP!=tokens.length || schema_error == true){
+   if (schema_error == true){
+     window.alert("haha");
+   }
    return false;
  }
  else{
@@ -576,6 +582,7 @@ function discharge(lineNumber){
       return false;
     }
   }
+  globalTP = 0;
   return true;
 }
 
@@ -1200,6 +1207,56 @@ function isFree(varOfInst, lineNumber){
 }
 
 
+//Question: does an instance require that every copy of a variable is replaced by the replace variable?
+function isEII(citedLineNumber, lineNumber, replaceVar){
+  var citedLine = document.getElementById('line'+citedLineNumber).value.trim();
+  var currentLine = document.getElementById('line'+lineNumber).value.trim();
+  var citedLineChars = getCharacters(citedLine);
+  var currentLineChars = getCharacters(currentLine);
+  if (citedLineChars.length < 6){
+    return false;
+  }
+  if (citedLineChars[0]!="(" || citedLineChars[1]!="E" || citedLineChars[2]!="Q" || citedLineChars[4]!=")"){
+    return false;
+  }
+  var varOfInst = citedLineChars[3];
+  var citedLineCharsSansUQ = [];
+  for (var i=5; i<citedLineChars.length; i++){
+    citedLineCharsSansUQ.push(citedLineChars[i]);
+  }
+  var currentLineCharsPlusParen = ["("];
+  for (var j=0; j<currentLineChars.length; j++){
+    currentLineCharsPlusParen.push(currentLineChars[j]);
+  }
+  currentLineCharsPlusParen.push(")");
+  var currLineCharsToCheck = [];
+  if (currentLineCharsPlusParen.length == citedLineCharsSansUQ.length){
+    currLineCharsToCheck = [...currentLineCharsPlusParen];
+  }
+  else if (currentLineChars.length == citedLineCharsSansUQ.length) {
+    currLineCharsToCheck = [...currentLineChars];
+  }
+  else{
+    return false;
+  }
+  //now, compare currLineCharsToCheck to citedLineCharsSansUQ. the only diff must be
+  //that the var of instantiation is replaced by the replaceVar
+  for (var k=0; k<citedLineCharsSansUQ.length; k++){
+    if (citedLineCharsSansUQ[k]==varOfInst){
+      if (currLineCharsToCheck[k]!=replaceVar){
+        return false;
+      }
+    }
+    else {
+      if (citedLineCharsSansUQ[k] != currLineCharsToCheck[k]){
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+
 function eii(lineNumber){
   //check citation form (m)u
   var citation = document.getElementById('cite'+lineNumber).value.trim();
@@ -1245,7 +1302,276 @@ function eii(lineNumber){
       return false;
     }
   }
-  //check that new line is instance of schema on line m (similar to UI check)
+  //check that new line is instance of schema on line m (similar to UI check but replacevar is already decided)
+  if (!isEII(citedLineNumber, lineNumber, varOfInst)){
+    return false;
+  }
+  return true;
+}
+
+
+function eie(lineNumber){
+  var citation = document.getElementById('cite'+lineNumber).value.trim();
+  var premises = document.getElementById('prem'+lineNumber).value.trim();
+  var currentLine = document.getElementById('line'+lineNumber).value.trim();
+  //check citation
+  var squareBracketString = "";
+  var parenString = "";
+  if (citation.length == 0 || citation.charAt(0)!="["){
+    return false;
+  }
+  var i = 1;
+  while (i<citation.length && citation.charAt(i)!="]"){
+     if (isInteger(citation.charAt(i))==false) {
+       return false;
+     }
+     else {
+       squareBracketString += citation.charAt(i);
+       i++;
+     }
+  }
+  if (i>=citation.length){
+     return false;
+  }
+  else if (squareBracketString == "") {
+    return false;
+  }
+  else {
+    i += 1;
+  }
+  while (i<citation.length && citation.charAt(i)!="("){
+    if (citation.charAt(i) == " "){
+      i += 1;
+    }
+    else {
+       return false;
+    }
+  }
+  if (i>=citation.length){
+    return false;
+  }
+  else {
+    i += 1;
+  }
+  while (i<citation.length && citation.charAt(i)!=")"){
+    if (isInteger(citation.charAt(i))== false) {
+      return false;
+    }
+    else {
+      parenString += citation.charAt(i);
+      i++;
+    }
+  }
+  i++;
+  if (i<citation.length || parenString == ""){
+    return false;
+  }
+  //now know citation format is good. just need to check if numbers are appropriate.
+  var citedLineNumber = parseInt(parenString);
+  var citedRemovedPremNumber = parseInt(squareBracketString);
+  if (citedLineNumber >= lineNumber || citedRemovedPremNumber >= lineNumber
+    || citedLineNumber < 1 || citedRemovedPremNumber <1){
+    return false;
+  }
+  //check that rule of citedRemovedPremNumber line is EII
+  if (rule(citedRemovedPremNumber)!="EII") {
+    return false;
+  }
+  //premises must be the same as those of citedLineNumber minus those of citedRemovedPremNumber
+  var premises = getPremises(lineNumber);
+  var citedLinePrem = getPremises(citedLineNumber.toString());
+  var combinedPrem = premises.concat([citedRemovedPremNumber.toString()]);
+
+  //compare premises to combined prem.
+  citedLinePrem = citedLinePrem.sort();
+  combinedPrem = combinedPrem.sort();
+  if (citedLinePrem.length != combinedPrem.length){
+    return false;
+  }
+  for (var k = 0; k<citedLinePrem.length; k++){
+    if (citedLinePrem[k] != combinedPrem[k]){
+      return false;
+    }
+  }
+  //check if new line is same as line m
+  var citedLine = document.getElementById('line'+citedLineNumber).value.trim();
+  var citedLineChars = getCharacters(citedLine);
+  var currentLineChars = getCharacters(currentLine);
+  if (citedLineChars.length != currentLineChars.length){
+    return false;
+  }
+  for (var l = 0; l<currentLineChars.length; l++){
+    if (currentLineChars[l]!=citedLineChars[l]){
+      return false;
+    }
+  }
+  //check that the variable flagged doesn't occur free in schema on line m
+  var flaggedVar = "None";
+  var eiiCitation = document.getElementById('cite'+citedRemovedPremNumber).value.trim();
+  var eiiCitationChars = getCharacters(eiiCitation);
+  flaggedVar = eiiCitation[eiiCitationChars.length-1];
+  if (isFree(flaggedVar, citedLineNumber)){
+    return false;
+  }
+  //or in any premise of m aside from j (any prem of this line)
+  for (var m=0; m<premises.length; m++){
+    if (isFree(flaggedVar, premises[m])){
+      return false;
+    }
+  }
+  return true;
+}
+
+
+function isBasicUG(citedLineNumber, lineNumber){
+  var citedLine = document.getElementById('line'+citedLineNumber).value.trim();
+  var currentLine = document.getElementById('line'+lineNumber).value.trim();
+  var citedLineChars = getCharacters(citedLine);
+  var currentLineChars = getCharacters(currentLine);
+  if (currentLineChars.length < 6){
+    window.alert("here6");
+    return false;
+  }
+  if (currentLineChars[0]!="(" || currentLineChars[1]!="U" || currentLineChars[2]!="Q" || currentLineChars[4]!=")"){
+    window.alert("here5");
+    return false;
+  }
+  var varOfInst = currentLineChars[3];
+  var currentLineCharsSansUQ = [];
+  for (var i=5; i<currentLineChars.length; i++){
+    currentLineCharsSansUQ.push(currentLineChars[i]);
+  }
+  var citedLineCharsPlusParen = ["("];
+  for (var j=0; j<citedLineChars.length; j++){
+    citedLineCharsPlusParen.push(citedLineChars[j]);
+  }
+  citedLineCharsPlusParen.push(")");
+  var citedLineCharsToCheck = [];
+  if (citedLineCharsPlusParen.length == currentLineCharsSansUQ.length){
+    citedLineCharsToCheck = [...citedLineCharsPlusParen];
+  }
+  else if (citedLineChars.length == currentLineCharsSansUQ.length) {
+    citedLineCharsToCheck = [...citedLineChars];
+  }
+  else{
+    window.alert("here4");
+    return false;
+  }
+  var replaceVar = "none";
+  for (var k=0; k<currentLineCharsSansUQ.length; k++){
+    if (currentLineCharsSansUQ[k]==varOfInst){
+      if (replaceVar == "none"){
+        if (citedLineCharsToCheck[k] == citedLineCharsToCheck[k].toUpperCase()){
+          window.alert("here3");
+          return false;
+        }
+        replaceVar = citedLineCharsToCheck[k];
+      }
+      else {
+        if (citedLineCharsToCheck[k]!=replaceVar){
+          window.alert("here2");
+          return false;
+        }
+      }
+    }
+    else {
+      if (currentLineCharsSansUQ[k] != citedLineCharsToCheck[k]){
+        window.alert("here1");
+        return false;
+      }
+    }
+  }
+  //replace var must not be free in any premise of citedLineNumber
+  // citedPrem = getPremises(citedLineNumber);
+  // for (var l=0; l<citedPrem.length; l++){
+  //   if (isFree(replaceVar, citedPrem[l])){
+  //     return false;
+  //   }
+  // }
+  return true;
+}
+
+
+
+function isLiberalizedUG(citedLineNumber, currentLineNumber){
+  return false;
+}
+
+
+function ug(lineNumber){
+  //check citation format: (m)
+  var citation = document.getElementById('cite'+lineNumber).value.trim();
+  citedLines.length = 0;
+  var i = 0;
+  while(i<citation.length){
+    if (citation[i]==" "){
+      i++;
+      continue;
+    }
+    else if (citation[i]=="("){
+      i++;
+      var currInt = "";
+      while(i<citation.length && isInteger(citation[i])==true){
+        currInt += citation[i];
+        i++;
+      }
+      if (citation[i]>= citation.length || citation[i]!=")" || currInt == ""){
+        window.alert("hered");
+        return false;
+      }
+      else {
+        i++;
+        if (parseInt(currInt) < 1 || parseInt(currInt) >= lineNumber){
+          window.alert("herec");
+          return false;
+        }
+        citedLines.push(parseInt(currInt));
+      }
+    }
+    else {
+      window.alert("hereb");
+      return false;
+    }
+  }
+  if (citedLines.length != 1){
+    window.alert("herec");
+    return false;
+  }
+  //get citedLine from citation
+  else {
+    var citedLine = citedLines[0];
+  }
+  //check premises: same as those of citedLine
+  var citedPrem = document.getElementById('prem'+citedLine).value.trim();
+  var currentPrem = document.getElementById('prem'+lineNumber).value.trim();
+  if (citedPrem != currentPrem){
+    window.alert("herea");
+    return false;
+  }
+  //check if is basic ug
+  if (isBasicUG(citedLine, lineNumber)){
+    return true;
+  }
+  //if not, check if is liberalized ug
+  else if (isLiberalizedUG(citedLine, lineNumber)) {
+    return true;
+  }
+  else {
+    window.alert("HERE");
+    return false;
+  }
+}
+
+
+function ruleThree(lineNumber){
+  var citation = document.getElementById('cite'+lineNumber).value.trim();
+  if (citation != ""){
+    return false;
+  }
+  var premises = document.getElementById('prem'+lineNumber).value.trim();
+  if (premises != ""){
+    return false;
+  }
   return true;
 }
 
@@ -1262,9 +1588,12 @@ Potential issues: does not say how the error came about. Talk to Prof. Sehon to
 see if he would like this feature. parentheses issues.
 */
 function check() {
-  noIssues = true;
-  for(i=1; i<16; i++){
+  var noIssues = true;
+  for(var i=1; i<16; i++){
     if (isSchema(i)==false){
+      window.alert("here?");
+      window.alert(i.toString());
+      window.alert(tokens.length);
       window.alert("Something is wrong.");
       noIssues = false;
       break;
@@ -1325,6 +1654,28 @@ function check() {
         break;
       }
     }
+    else if (rule(i)=="EIE"){
+      noIssues = eie(i);
+      if (noIssues == false){
+        window.alert("Something is wrong.");
+        break;
+      }
+    }
+    else if (rule(i)=="UG"){
+      noIssues = ug(i);
+      if (noIssues == false){
+        window.alert("HI");
+        window.alert("Something is wrong.");
+        break;
+      }
+    }
+    // else if (rule(i)=="III"){
+    //   noIssues = ruleThree(i);
+    //   if (noIssues == false){
+    //     window.alert("Something is wrong.");
+    //     break;
+    //   }
+    // }
   }
   if (noIssues){
       window.alert("Looks good!");
@@ -1332,5 +1683,4 @@ function check() {
   tokens.length = 0;
   schema_error = false;
   globalTP = 0;
-  //globalMarker = 0;
 }
