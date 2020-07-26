@@ -255,8 +255,6 @@ function term(){
     term();
   }
   else {
-    window.alert("globalTP:" + globalTP.toString());
-    window.alert("tokens.length:" + tokens.length.toString());
     schema_error = true;
   }
 }
@@ -280,14 +278,12 @@ function isSchema(lineNumber){
   getTokens(characters);
   for(var i=0; i<tokens.length; i++){
     if (tokens[i]=="error"){
-      window.alert("hehe");
       return false;
     }
   }
  conditional();
  if (globalTP!=tokens.length || schema_error == true){
    if (schema_error == true){
-     window.alert("haha");
    }
    return false;
  }
@@ -341,31 +337,68 @@ Potential issues: Might work if there is no conversion of quantifiers. May not h
                   into multiple functions? Need citation to be in parentheses
 */
 function cq(lineNumber){
+  // var citation = document.getElementById('cite'+lineNumber).value.trim();
+  // if (parseInt(citation).toString() != citation || citation >= lineNumber) {
+  //   window.alert(parseInt(citation).toString());
+  //   return false;
+  // }
   var citation = document.getElementById('cite'+lineNumber).value.trim();
-  if (parseInt(citation).toString() != citation || citation >= lineNumber) {
+  citedLines.length = 0;
+  var i = 0;
+  while(i<citation.length){
+    if (citation[i]==" "){
+      i++;
+      continue;
+    }
+    else if (citation[i]=="("){
+      i++;
+      var currInt = "";
+      while(i<citation.length && isInteger(citation[i])==true){
+        currInt += citation[i];
+        i++;
+      }
+      if (citation[i]>= citation.length || citation[i]!=")" || currInt == ""){
+        return false;
+      }
+      else {
+        i++;
+        if (parseInt(currInt) < 1 || parseInt(currInt) >= lineNumber){
+          return false;
+        }
+        citedLines.push(parseInt(currInt));
+      }
+    }
+    else {
+      return false;
+    }
+  }
+  if (citedLines.length != 1){
     return false;
   }
-  var citedPrem = document.getElementById('prem'+citation).value.trim();
+  else {
+    var citedLineNumber = citedLines[0];
+  }
+  var citedPrem = document.getElementById('prem'+citedLineNumber).value.trim();
   var currentPrem = document.getElementById('prem'+lineNumber).value.trim();
   if (citedPrem != currentPrem){
     return false;
   }
-  var citedLine = document.getElementById('line'+citation).value.trim();
+  var citedLine = document.getElementById('line'+ citedLineNumber).value.trim();
   var currentLine = document.getElementById('line'+lineNumber).value.trim();
   var citedLineChars = getCharacters(citedLine);
   var currentLineChars = getCharacters(currentLine);
   tokens.length = 0;
   getTokens(citedLineChars);
-  var citedLineTokens = tokens;
+  var citedLineTokens = [...tokens];
   tokens.length = 0;
   getTokens(currentLineChars);
-  var currentLineTokens = tokens;
+  var currentLineTokens = [...tokens];
   tokens.length = 0;
   if (citedLineTokens.length < 2 || currentLineTokens.length < 2
        || citedLineTokens.length!=currentLineTokens.length){
     return false;
   }
-  var i = 0;
+  i = 0;
   while(i<citedLineTokens.length-1){
     if (citedLineTokens[i]!=currentLineTokens[i]){
       if (citedLineTokens[i] == "neg" && citedLineTokens[i+1] == "uq"){
@@ -719,6 +752,44 @@ function evaluateTF(assignment){
 }
 
 
+function quantified(index, lineChars){
+  var isBound = false;
+  var parenCount = 0;
+  for (var i = 0; i < lineChars.length; i++){
+    if (i == index){
+      return isBound;
+    }
+    else if (lineChars[i] == "(" && i+2 < lineChars.length && lineChars[i+2] == "Q"){
+      isBound = true;
+    }
+    else if (lineChars[i] == "(" && isBound == true){
+      if (i+2 >= lineChars.length || lineChars[i+2]!="Q"){
+        parenCount += 1;
+      }
+    }
+    else if (lineChars[i] == ")" && isBound == true){
+      if (i-2<0 || lineChars[i-2]!="Q"){
+        parenCount -= 1;
+        if (parenCount == 0) {
+          isBound = false;
+        }
+      }
+    }
+    else if (i+1 < lineChars.length && lineChars[i] == "=" && lineChars[i+1] == ">" && isBound == true){
+      if (parenCount == 0){
+        isBound = false;
+      }
+    }
+    else if (i+2 < lineChars.length && lineChars[i] == "<" && lineChars[i+1] == "=" && lineChars[i+2] == ">" && isBound == true){
+      if (parenCount == 0){
+        isBound = false;
+      }
+    }
+  }
+  return false;
+}
+
+
 /*
 tf function
 Description: checks whether or not a given line is a valid tf line. This involves
@@ -806,7 +877,43 @@ function tf(lineNumber){
   var newString = "";
   var n = 0;
   while (n<implicationChars.length){
-    if (implicationChars[n] == "-"){
+    if (implicationChars[n]=="("){
+      if (implicationChars[n+1] == "U" || implicationChars[n+1] == "E"){
+        newString += "(";
+        newString += implicationChars[n+1];
+        newString += "Q";
+        newString += implicationChars[n+3];
+        newString += ")";
+        n+=5;
+      }
+      else {
+        if (quantified(n, implicationChars)){
+          newString += "(";
+          n++;
+        }
+        else{
+          if (newString != ""){
+            assignmentTemplate.push(newString);
+          }
+          assignmentTemplate.push("lp");
+          newString = "";
+          n++;
+        }
+      }
+    }
+    else if (quantified(n, implicationChars)){
+      newString += implicationChars[n];
+      n++;
+    }
+    else if (implicationChars[n] == ")"){
+      if (newString != ""){
+        assignmentTemplate.push(newString);
+      }
+      assignmentTemplate.push("rp");
+      newString = "";
+      n++;
+    }
+    else if (implicationChars[n] == "-"){
       if (newString != ""){
         assignmentTemplate.push(newString);
       }
@@ -827,22 +934,6 @@ function tf(lineNumber){
         assignmentTemplate.push(newString);
       }
       assignmentTemplate.push("or");
-      newString = "";
-      n++;
-    }
-    else if (implicationChars[n] == "(" && implicationChars[n+1]!="U" && implicationChars[n+1] != "E"){
-      if (newString != ""){
-        assignmentTemplate.push(newString);
-      }
-      assignmentTemplate.push("lp");
-      newString = "";
-      n++;
-    }
-    else if (implicationChars[n] == ")" && implicationChars[n-2]!="Q"){
-      if (newString != ""){
-        assignmentTemplate.push(newString);
-      }
-      assignmentTemplate.push("rp");
       newString = "";
       n++;
     }
@@ -876,6 +967,7 @@ function tf(lineNumber){
   //make an array of all the strings that need assignments (no repeats!)
   var tfSlots = [];
   for (var x=0; x<assignmentTemplate.length; x++){
+    window.alert(assignmentTemplate[x]);
     if(assignmentTemplate[x]!="neg" && assignmentTemplate[x]!="and" && assignmentTemplate[x]!="or" && assignmentTemplate[x]!="lp" && assignmentTemplate[x]!="rp" && assignmentTemplate[x]!="cond" && assignmentTemplate[x]!="bicond"){
       if (!tfSlots.includes(assignmentTemplate[x])){
         tfSlots.push(assignmentTemplate[x]);
@@ -1282,7 +1374,7 @@ function eii(lineNumber){
   }
   var varOfInst = citationChars[i+1];
   //check that instantial variable is not free in any line up to and including line m
-  for (var k = 1; k<=citedLineNumber; k++){
+  for (var k = citedLineNumber; k<lineNumber; k++){
     if (isFree(varOfInst, k)){
       return false;
     }
@@ -1429,11 +1521,9 @@ function isBasicUG(citedLineNumber, lineNumber){
   var citedLineChars = getCharacters(citedLine);
   var currentLineChars = getCharacters(currentLine);
   if (currentLineChars.length < 6){
-    window.alert("here6");
     return false;
   }
   if (currentLineChars[0]!="(" || currentLineChars[1]!="U" || currentLineChars[2]!="Q" || currentLineChars[4]!=")"){
-    window.alert("here5");
     return false;
   }
   var varOfInst = currentLineChars[3];
@@ -1454,7 +1544,6 @@ function isBasicUG(citedLineNumber, lineNumber){
     citedLineCharsToCheck = [...citedLineChars];
   }
   else{
-    window.alert("here4");
     return false;
   }
   var replaceVar = "none";
@@ -1462,21 +1551,18 @@ function isBasicUG(citedLineNumber, lineNumber){
     if (currentLineCharsSansUQ[k]==varOfInst){
       if (replaceVar == "none"){
         if (citedLineCharsToCheck[k] == citedLineCharsToCheck[k].toUpperCase()){
-          window.alert("here3");
           return false;
         }
         replaceVar = citedLineCharsToCheck[k];
       }
       else {
         if (citedLineCharsToCheck[k]!=replaceVar){
-          window.alert("here2");
           return false;
         }
       }
     }
     else {
       if (currentLineCharsSansUQ[k] != citedLineCharsToCheck[k]){
-        window.alert("here1");
         return false;
       }
     }
@@ -1516,25 +1602,21 @@ function ug(lineNumber){
         i++;
       }
       if (citation[i]>= citation.length || citation[i]!=")" || currInt == ""){
-        window.alert("hered");
         return false;
       }
       else {
         i++;
         if (parseInt(currInt) < 1 || parseInt(currInt) >= lineNumber){
-          window.alert("herec");
           return false;
         }
         citedLines.push(parseInt(currInt));
       }
     }
     else {
-      window.alert("hereb");
       return false;
     }
   }
   if (citedLines.length != 1){
-    window.alert("herec");
     return false;
   }
   //get citedLine from citation
@@ -1545,7 +1627,6 @@ function ug(lineNumber){
   var citedPrem = document.getElementById('prem'+citedLine).value.trim();
   var currentPrem = document.getElementById('prem'+lineNumber).value.trim();
   if (citedPrem != currentPrem){
-    window.alert("herea");
     return false;
   }
   //check if is basic ug
@@ -1557,7 +1638,6 @@ function ug(lineNumber){
     return true;
   }
   else {
-    window.alert("HERE");
     return false;
   }
 }
@@ -1572,6 +1652,32 @@ function ruleThree(lineNumber){
   if (premises != ""){
     return false;
   }
+  //check that schema is of form u=v=>(R<=>S)
+  var line = document.getElementById('line'+lineNumber).value.trim();
+  var lineChars = getCharacters(line);
+  if (lineChars.length<12){
+    return false;
+  }
+  if (lineChars[0].toUpperCase()==lineChars[0]){
+    return false;
+  }
+  if (lineChars[1]!="="){
+    return false;
+  }
+  if (lineChars[2].toUpperCase()==lineChars[2]){
+    return false;
+  }
+  if (lineChars[3]!="="){
+    return false;
+  }
+  if (lineChars[4]!=">"){
+    return false;
+  }
+  if (lineChars[5]!="("){
+    return false;
+  }
+  var i = 6;
+  //compare R and S- same but R has free u at some places where S has free v
   return true;
 }
 
@@ -1591,9 +1697,6 @@ function check() {
   var noIssues = true;
   for(var i=1; i<16; i++){
     if (isSchema(i)==false){
-      window.alert("here?");
-      window.alert(i.toString());
-      window.alert(tokens.length);
       window.alert("Something is wrong.");
       noIssues = false;
       break;
@@ -1664,18 +1767,17 @@ function check() {
     else if (rule(i)=="UG"){
       noIssues = ug(i);
       if (noIssues == false){
-        window.alert("HI");
         window.alert("Something is wrong.");
         break;
       }
     }
-    // else if (rule(i)=="III"){
-    //   noIssues = ruleThree(i);
-    //   if (noIssues == false){
-    //     window.alert("Something is wrong.");
-    //     break;
-    //   }
-    // }
+    else if (rule(i)=="III"){
+      noIssues = ruleThree(i);
+      if (noIssues == false){
+        window.alert("Something is wrong.");
+        break;
+      }
+    }
   }
   if (noIssues){
       window.alert("Looks good!");
