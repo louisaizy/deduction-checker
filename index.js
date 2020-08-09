@@ -967,7 +967,6 @@ function tf(lineNumber){
   //make an array of all the strings that need assignments (no repeats!)
   var tfSlots = [];
   for (var x=0; x<assignmentTemplate.length; x++){
-    window.alert(assignmentTemplate[x]);
     if(assignmentTemplate[x]!="neg" && assignmentTemplate[x]!="and" && assignmentTemplate[x]!="or" && assignmentTemplate[x]!="lp" && assignmentTemplate[x]!="rp" && assignmentTemplate[x]!="cond" && assignmentTemplate[x]!="bicond"){
       if (!tfSlots.includes(assignmentTemplate[x])){
         tfSlots.push(assignmentTemplate[x]);
@@ -1259,6 +1258,48 @@ function eg(lineNumber){
 function isFree(varOfInst, lineNumber){
   var line = document.getElementById('line'+lineNumber).value.trim();
   var lineChars = getCharacters(line);
+  var isBound = false;
+  var parenCount = 0;
+  for (var i = 0; i < lineChars.length; i++){
+    if (lineChars[i] == varOfInst){
+      if (i-2 > 0 && (lineChars[i-2] == "E" || lineChars[i-2] == "U") && lineChars[i-1] == "Q"){
+        isBound = true;
+        continue;
+      }
+      else if (isBound == false){
+        return true;
+      }
+    }
+    else if (lineChars[i] == "(" && isBound == true){
+      if (i+2 >= lineChars.length || lineChars[i+2]!="Q"){
+        parenCount += 1;
+      }
+    }
+    else if (lineChars[i] == ")" && isBound == true){
+      if (i-2<0 || lineChars[i-2]!="Q"){
+        parenCount -= 1;
+        if (parenCount == 0) {
+          isBound = false;
+        }
+      }
+    }
+    else if (i+1 < lineChars.length && lineChars[i] == "=" && lineChars[i+1] == ">" && isBound == true){
+      if (parenCount == 0){
+        isBound = false;
+      }
+    }
+    else if (i+2 < lineChars.length && lineChars[i] == "<" && lineChars[i+1] == "=" && lineChars[i+2] == ">" && isBound == true){
+      if (parenCount == 0){
+        isBound = false;
+      }
+    }
+  }
+  return false;
+}
+
+
+function isFreeSubline(varOfInst, sublineChars){
+  var lineChars = sublineChars;
   var isBound = false;
   var parenCount = 0;
   for (var i = 0; i < lineChars.length; i++){
@@ -1661,11 +1702,17 @@ function ruleThree(lineNumber){
   if (lineChars[0].toUpperCase()==lineChars[0]){
     return false;
   }
+  else{
+    var u = lineChars[0];
+  }
   if (lineChars[1]!="="){
     return false;
   }
   if (lineChars[2].toUpperCase()==lineChars[2]){
     return false;
+  }
+  else{
+    var v = lineChars[2];
   }
   if (lineChars[3]!="="){
     return false;
@@ -1678,6 +1725,57 @@ function ruleThree(lineNumber){
   }
   var i = 6;
   //compare R and S- same but R has free u at some places where S has free v
+  var r = [];
+  while (i<lineChars.length && lineChars[i]!="<"){
+    if (lineChars[i]!= " "){
+      r.push(lineChars[i]);
+    }
+    i++;
+  }
+  if (lineChars[i] != "<") {
+    return false;
+  }
+  i++;
+  if (lineChars[i] != "="){
+    return false;
+  }
+  i++;
+  if (lineChars[i] != ">"){
+    return false;
+  }
+  i++;
+  var s = [];
+  while (i<lineChars.length-1){
+    if (lineChars[i]!= " "){
+      s.push(lineChars[i]);
+    }
+    i++;
+  }
+  if (lineChars[i]!= ")"){
+    return false;
+  }
+  if (r.length != s.length){
+    return false;
+  }
+  for (var j = 0; j< r.length; j++){
+    if (r[j] != u){
+      if (r[j] != s[j]){
+        return false;
+      }
+    }
+    else {
+      if (isFreeSubline(u, r)){
+        if (!isFreeSubline(v, s)){
+          return false;
+        }
+      }
+      else {
+        if (r[j]!=s[j]){
+          return false;
+        }
+      }
+    }
+  }
   return true;
 }
 
