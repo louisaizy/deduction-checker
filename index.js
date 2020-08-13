@@ -337,11 +337,6 @@ Potential issues: Might work if there is no conversion of quantifiers. May not h
                   into multiple functions? Need citation to be in parentheses
 */
 function cq(lineNumber){
-  // var citation = document.getElementById('cite'+lineNumber).value.trim();
-  // if (parseInt(citation).toString() != citation || citation >= lineNumber) {
-  //   window.alert(parseInt(citation).toString());
-  //   return false;
-  // }
   var citation = document.getElementById('cite'+lineNumber).value.trim();
   citedLines.length = 0;
   var i = 0;
@@ -736,7 +731,7 @@ Returns: final boolean, whether or not assignment evaluates to true or false
 function evaluateTF(assignment){
   var partOne = evaluateOr(assignment);
   if (globalMarker < assignment.length && (assignment[globalMarker] == "cond" || assignment[globalMarker]=="bicond")){
-    condType = assignment[globalMarker];
+    var condType = assignment[globalMarker];
     globalMarker += 1;
     var partTwo = evaluateOr(assignment);
     if (condType == "bicond"){
@@ -874,6 +869,8 @@ function tf(lineNumber){
         //otherwise, put what is there together in a string- could be pred, sentLet, equality
   var assignmentTemplate = [];
   var implicationChars = getCharacters(implication);
+  for(var x=0; x<implicationChars.length; x++){
+  }
   var newString = "";
   var n = 0;
   while (n<implicationChars.length){
@@ -1024,6 +1021,8 @@ function tf(lineNumber){
     // }
     result = evaluateTF(assignments[e]);
     if (result == false){
+      for(var f=0; f<assignments[e].length; f++){
+      }
       return false;
     }
   }
