@@ -1090,6 +1090,13 @@ function isUI(citedLineNumber, lineNumber){
       }
     }
   }
+  if (citedLineCharsSansUQ.length>6 && (citedLineCharsSansUQ[0]=="(" && citedLineCharsSansUQ[1]=="E" && citedLineCharsSansUQ[2] == "Q" || citedLineCharsSansUQ[1]=="(" && citedLineCharsSansUQ[2]=="E" && citedLineCharsSansUQ[3] == "Q")) {
+    for (var l=6; l<citedLineCharsSansUQ.length;l++){
+      if (citedLineCharsSansUQ[l] == replaceVar){
+        return false;
+      }
+    }
+  }
   return true;
 }
 
@@ -1414,7 +1421,7 @@ function eii(lineNumber){
   }
   var varOfInst = citationChars[i+1];
   //check that instantial variable is not free in any line up to and including line m
-  for (var k = citedLineNumber; k<lineNumber; k++){
+  for (var k = 1; k<=citedLineNumber; k++){
     if (isFree(varOfInst, k)){
       return false;
     }
