@@ -625,7 +625,7 @@ Returns: boolean (whether or not line is a valid rule one line)
 */
 function ruleOne(lineNumber){
   var currentLine = document.getElementById('line'+lineNumber).value.trim();
-  if (currentLine != "(UQx)x=x"){
+  if (currentLine != "(UQx)(x=x)"){
     return false;
   }
   var citation = document.getElementById('cite'+lineNumber).value.trim();
