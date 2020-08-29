@@ -394,15 +394,18 @@ function cq(lineNumber){
   }
   i = 0;
   var converted = false;
-  while(i<citedLineChars.length-5){
+  while(i<citedLineChars.length){
     if (citedLineChars[i]!=currentLineChars[i]){
-      if (citedLineChars[i] == "-" && citedLineChars[i+2] == "U"){
+      if (i+5>=citedLineChars.length){
+        return false;
+      }
+      else if (citedLineChars[i] == "-" && citedLineChars[i+2] == "U"){
         if (currentLineChars[i+1] != "E" || currentLineChars[i+5] != "-"){
           return false;
         }
         else {
           converted = true;
-          i+=5;
+          i+=6;
         }
       }
       else if (citedLineChars[i] == "-" && citedLineChars[i+2] == "E"){
@@ -411,7 +414,7 @@ function cq(lineNumber){
         }
         else {
           converted = true;
-          i+=5;
+          i+=6;
         }
       }
       else if (citedLineChars[i+1] == "U" && citedLineChars[i+5] == "-"){
@@ -420,7 +423,7 @@ function cq(lineNumber){
         }
         else {
           converted = true;
-          i+=5;
+          i+=6;
         }
       }
       else if (citedLineChars[i+1] == "E" && citedLineChars[i+5] == "-"){
@@ -429,7 +432,7 @@ function cq(lineNumber){
         }
         else {
           converted = true;
-          i+=5;
+          i+=6;
         }
       }
       else {
@@ -442,7 +445,6 @@ function cq(lineNumber){
   }
   citedLines.length = 0;
   if (!converted) {
-    window.alert("here");
     return false;
   }
   return true;
@@ -1811,7 +1813,6 @@ function check() {
   for(var i=1; i<16; i++){
     if (isSchema(i)==false){
       window.alert("Something is wrong.");
-      window.alert("here")
       noIssues = false;
       break;
     }
