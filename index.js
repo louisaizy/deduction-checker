@@ -334,7 +334,7 @@ Parameters: integer 1-15 (line number)
 Returns: boolean (if line is valid conversion of quantifiers line or not)
 Potential issues: Might work if there is no conversion of quantifiers. May not handle
                   change in parentheses. Could this function be shortened/ broken
-                  into multiple functions? Need citation to be in parentheses
+                  into multiple functions?
 */
 function cq(lineNumber){
   var citation = document.getElementById('cite'+lineNumber).value.trim();
@@ -382,50 +382,54 @@ function cq(lineNumber){
   var currentLine = document.getElementById('line'+lineNumber).value.trim();
   var citedLineChars = getCharacters(citedLine);
   var currentLineChars = getCharacters(currentLine);
-  tokens.length = 0;
-  getTokens(citedLineChars);
-  var citedLineTokens = [...tokens];
-  tokens.length = 0;
-  getTokens(currentLineChars);
-  var currentLineTokens = [...tokens];
-  tokens.length = 0;
-  if (citedLineTokens.length < 2 || currentLineTokens.length < 2
-       || citedLineTokens.length!=currentLineTokens.length){
+  // tokens.length = 0;
+  // getTokens(citedLineChars);
+  // var citedLineTokens = [...tokens];
+  // tokens.length = 0;
+  // getTokens(currentLineChars);
+  // var currentLineTokens = [...tokens];
+  if (citedLineChars.length < 6 || currentLineChars.length < 6
+       || citedLineChars.length!=currentLineChars.length){
     return false;
   }
   i = 0;
-  while(i<citedLineTokens.length-1){
-    if (citedLineTokens[i]!=currentLineTokens[i]){
-      if (citedLineTokens[i] == "neg" && citedLineTokens[i+1] == "uq"){
-        if (currentLineTokens[i] != "eq" || currentLineTokens[i+1] != "neg"){
+  var converted = false;
+  while(i<citedLineChars.length-5){
+    if (citedLineChars[i]!=currentLineChars[i]){
+      if (citedLineChars[i] == "-" && citedLineChars[i+2] == "U"){
+        if (currentLineChars[i+1] != "E" || currentLineChars[i+5] != "-"){
           return false;
         }
         else {
-          i+=2;
+          converted = true;
+          i+=5;
         }
       }
-      else if (citedLineTokens[i] == "neg" && citedLineTokens[i+1] == "eq"){
-        if (currentLineTokens[i] != "uq" || currentLineTokens[i+1] != "neg"){
+      else if (citedLineChars[i] == "-" && citedLineChars[i+2] == "E"){
+        if (currentLineChars[i+1] != "U" || currentLineChars[i+5] != "-"){
           return false;
         }
         else {
-          i+=2;
+          converted = true;
+          i+=5;
         }
       }
-      else if (citedLineTokens[i] == "uq" && citedLineTokens[i+1] == "neg"){
-        if (currentLineTokens[i] != "neg" || currentLineTokens[i+1] != "eq"){
+      else if (citedLineChars[i+1] == "U" && citedLineChars[i+5] == "-"){
+        if (currentLineChars[i] != "-" || currentLineChars[i+2] != "E"){
           return false;
         }
         else {
-          i+=2;
+          converted = true;
+          i+=5;
         }
       }
-      else if (citedLineTokens[i] == "eq" && citedLineTokens[i+1] == "neg"){
-        if (currentLineTokens[i] != "neg" || currentLineTokens[i+1] != "uq"){
+      else if (citedLineChars[i+1] == "E" && citedLineChars[i+5] == "-"){
+        if (currentLineChars[i] != "-" || currentLineChars[i+2] != "U"){
           return false;
         }
         else {
-          i+=2;
+          converted = true;
+          i+=5;
         }
       }
       else {
@@ -435,6 +439,11 @@ function cq(lineNumber){
     else{
       i++;
     }
+  }
+  citedLines.length = 0;
+  if (!converted) {
+    window.alert("here");
+    return false;
   }
   return true;
 }
@@ -1802,6 +1811,7 @@ function check() {
   for(var i=1; i<16; i++){
     if (isSchema(i)==false){
       window.alert("Something is wrong.");
+      window.alert("here")
       noIssues = false;
       break;
     }
