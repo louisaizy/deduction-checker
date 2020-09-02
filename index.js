@@ -35,7 +35,6 @@ function getCharacters(line){
               by meaning
  Parameters: array of characters
  Returns: nothing
- Potential issues: relying on global variables. Could be shortened/ broken down?
  */
 function getTokens(characters){
    var tokenPointer = 0;
@@ -332,9 +331,6 @@ Description: Checks if line is a valid conversion of quantifiers line, meaning
              are the same as the premises of the cited line.
 Parameters: integer 1-15 (line number)
 Returns: boolean (if line is valid conversion of quantifiers line or not)
-Potential issues: Might work if there is no conversion of quantifiers. May not handle
-                  change in parentheses. Could this function be shortened/ broken
-                  into multiple functions?
 */
 function cq(lineNumber){
   var citation = document.getElementById('cite'+lineNumber).value.trim();
@@ -382,12 +378,6 @@ function cq(lineNumber){
   var currentLine = document.getElementById('line'+lineNumber).value.trim();
   var citedLineChars = getCharacters(citedLine);
   var currentLineChars = getCharacters(currentLine);
-  // tokens.length = 0;
-  // getTokens(citedLineChars);
-  // var citedLineTokens = [...tokens];
-  // tokens.length = 0;
-  // getTokens(currentLineChars);
-  // var currentLineTokens = [...tokens];
   if (citedLineChars.length < 6 || currentLineChars.length < 6
        || citedLineChars.length!=currentLineChars.length){
     return false;
@@ -473,7 +463,6 @@ Description: gives the premises entered at a given line number in array form,
              stripping parentheses and spaces
 Parameters: integer 1-15 (line number)
 Returns: array of integers (premise numbers)
-Potential issues: may get non-integers- check here rather than in other functions?
 */
 function getPremises(lineNumber){
   var premisesEntry = document.getElementById('prem'+lineNumber).value.trim();
@@ -524,8 +513,6 @@ Description: checks if given line is a valid discharge line. This means that the
              line must be a conditional merger of the antecedent and consequent lines.
 Parameters: integer 1-15 (line number)
 Returns: boolean (whether or not given line is valid discharge line)
-Potential issues: Added parentheses may cause error. Could this function be broken
-                  down or shortened?
 */
 function discharge(lineNumber){
   var citation = document.getElementById('cite'+lineNumber).value.trim();
@@ -758,6 +745,13 @@ function evaluateTF(assignment){
 }
 
 
+/*
+quantified function
+Description: checks whether the character in an array of characters at a given
+              index is quantified
+Parameters: index, array of characters
+Returns: boolean, whether the character at a given index is quantified
+*/
 function quantified(index, lineChars){
   var isBound = false;
   var parenCount = 0;
@@ -804,7 +798,6 @@ Description: checks whether or not a given line is a valid tf line. This involve
              truth-functionally imply the current line.
 Parameters: line number (integer 1-15)
 Returns: boolean, whether or not line is a valid tf line
-Issues: doesn't correctly handle quantified statements
 */
 function tf(lineNumber){
   //globalMarker = 0;
@@ -1023,13 +1016,8 @@ function tf(lineNumber){
   }
   //each assignment is now an array. for each of these assignments, use evaluateTF function.
   var result = true;
-  //var newAssign = "";
   for(var e=0; e<assignments.length; e++){
     globalMarker = 0;
-    // newAssign = "";
-    // for(var f=0; f<assignments[e].length; f++){
-    //   newAssign+=assignments[e][f]+ " ";
-    // }
     result = evaluateTF(assignments[e]);
     if (result == false){
       for(var f=0; f<assignments[e].length; f++){
@@ -1037,7 +1025,6 @@ function tf(lineNumber){
       return false;
     }
   }
-  //globalMarker = 0;
   assignments.length = 0;
   assignment1.length = 0;
   assignment2.length = 0;
@@ -1047,6 +1034,12 @@ function tf(lineNumber){
 }
 
 
+/*
+isUI function
+Description: checks if a line is a universal instantiation of a cited line
+Parameters: 2 integer line numbers
+Returns: boolean, whether or not one line is a universal instantiation of the other
+*/
 function isUI(citedLineNumber, lineNumber){
   var citedLine = document.getElementById('line'+citedLineNumber).value.trim();
   var currentLine = document.getElementById('line'+lineNumber).value.trim();
@@ -1112,6 +1105,12 @@ function isUI(citedLineNumber, lineNumber){
 }
 
 
+/*
+ui function
+Description: checks if a given line can be put down as UI
+Parameters: integer line number
+Returns: boolean of whether line is a valid UI line
+*/
 function ui(lineNumber){
   //check citation
   var citation = document.getElementById('cite'+lineNumber).value.trim();
@@ -1164,6 +1163,12 @@ function ui(lineNumber){
 }
 
 
+/*
+isEG function
+Description: check if a given line is an existential generalization of another
+Parameters: 2 integer line numbers
+Returns: boolean, whether or not one line is EG of another
+*/
 function isEG(citedLineNumber, lineNumber){
   var citedLine = document.getElementById('line'+citedLineNumber).value.trim();
   var currentLine = document.getElementById('line'+lineNumber).value.trim();
@@ -1220,6 +1225,12 @@ function isEG(citedLineNumber, lineNumber){
 }
 
 
+/*
+eg function
+Description: check if a given line is a valid existential generalization line
+Parameters: integer line number
+Returns: boolean, whether or not line is valid EG line
+*/
 function eg(lineNumber){
   //check citation
   var citation = document.getElementById('cite'+lineNumber).value.trim();
@@ -1272,6 +1283,12 @@ function eg(lineNumber){
 }
 
 
+/*
+isFree function
+Description: check if a given variable is free on a given line
+Parameters: character (the variable) and integer line number
+Returns: boolean, whether or not var is free in line
+*/
 function isFree(varOfInst, lineNumber){
   var line = document.getElementById('line'+lineNumber).value.trim();
   var lineChars = getCharacters(line);
@@ -1315,6 +1332,12 @@ function isFree(varOfInst, lineNumber){
 }
 
 
+/*
+isFreeSubline function
+Description: check if a given variable is free in a given subline
+Parameters: character (the variable) and array of characters
+Returns: boolean, whether or not var is free in subline
+*/
 function isFreeSubline(varOfInst, sublineChars){
   var lineChars = sublineChars;
   var isBound = false;
@@ -1357,7 +1380,12 @@ function isFreeSubline(varOfInst, sublineChars){
 }
 
 
-//Question: does an instance require that every copy of a variable is replaced by the replace variable?
+/*
+isEII function
+Description: check if one line is an eii of another using a given variable
+Parameters: 2 integer line numbers and a character variable letter
+Returns: boolean, whether or not one line is an eii of another using a given variable
+*/
 function isEII(citedLineNumber, lineNumber, replaceVar){
   var citedLine = document.getElementById('line'+citedLineNumber).value.trim();
   var currentLine = document.getElementById('line'+lineNumber).value.trim();
@@ -1407,6 +1435,12 @@ function isEII(citedLineNumber, lineNumber, replaceVar){
 }
 
 
+/*
+eii function
+Description: check if a given line is a valid eii line
+Parameters: integer line number
+Returns: boolean, whether or not line is valid eii
+*/
 function eii(lineNumber){
   //check citation form (m)u
   var citation = document.getElementById('cite'+lineNumber).value.trim();
@@ -1460,6 +1494,12 @@ function eii(lineNumber){
 }
 
 
+/*
+eie function
+Description: check if a given line is a valid eie line
+Parameters: integer line number
+Returns: boolean, whether or not the line is a valid eie line
+*/
 function eie(lineNumber){
   var citation = document.getElementById('cite'+lineNumber).value.trim();
   var premises = document.getElementById('prem'+lineNumber).value.trim();
@@ -1531,8 +1571,7 @@ function eie(lineNumber){
   var premises = getPremises(lineNumber);
   var citedLinePrem = getPremises(citedLineNumber.toString());
   var combinedPrem = premises.concat([citedRemovedPremNumber.toString()]);
-
-  //compare premises to combined prem.
+  //compare premises to combined prem
   citedLinePrem = citedLinePrem.sort();
   combinedPrem = combinedPrem.sort();
   if (citedLinePrem.length != combinedPrem.length){
@@ -1573,7 +1612,13 @@ function eie(lineNumber){
 }
 
 
-function isBasicUG(citedLineNumber, lineNumber){
+/*
+isUG function
+Description: check if a given line is a universal generalization of another
+Parameters: 2 integer line numbers
+Returns: boolean (whether or not second line is UG of the first)
+*/
+function isUG(citedLineNumber, lineNumber){
   var citedLine = document.getElementById('line'+citedLineNumber).value.trim();
   var currentLine = document.getElementById('line'+lineNumber).value.trim();
   var citedLineChars = getCharacters(citedLine);
@@ -1625,20 +1670,7 @@ function isBasicUG(citedLineNumber, lineNumber){
       }
     }
   }
-  //replace var must not be free in any premise of citedLineNumber
-  // citedPrem = getPremises(citedLineNumber);
-  // for (var l=0; l<citedPrem.length; l++){
-  //   if (isFree(replaceVar, citedPrem[l])){
-  //     return false;
-  //   }
-  // }
   return true;
-}
-
-
-
-function isLiberalizedUG(citedLineNumber, currentLineNumber){
-  return false;
 }
 
 
@@ -1687,12 +1719,8 @@ function ug(lineNumber){
   if (citedPrem != currentPrem){
     return false;
   }
-  //check if is basic ug
-  if (isBasicUG(citedLine, lineNumber)){
-    return true;
-  }
-  //if not, check if is liberalized ug
-  else if (isLiberalizedUG(citedLine, lineNumber)) {
+  //check if is ug
+  if (isUG(citedLine, lineNumber)){
     return true;
   }
   else {
@@ -1701,6 +1729,14 @@ function ug(lineNumber){
 }
 
 
+/*
+ruleThree function
+Description: check if a given line has no citations nor premises and is of the form
+             u=v=>(R<=>S) where R and S are the same except R may have free u at some places
+             where S has free v
+Parameters: integer line number
+Returns: boolean, whether or not line is a valid ruleThree line
+*/
 function ruleThree(lineNumber){
   var citation = document.getElementById('cite'+lineNumber).value.trim();
   if (citation != ""){
@@ -1805,8 +1841,6 @@ Description: called when check button is pressed. Loops through each row and
              looks good.
 Parameters: none
 Returns: none
-Potential issues: does not say how the error came about. Talk to Prof. Sehon to
-see if he would like this feature. parentheses issues.
 */
 function check() {
   var noIssues = true;
